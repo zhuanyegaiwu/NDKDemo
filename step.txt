@@ -1,0 +1,88 @@
+
+stuido 3.0以上
+1.配置DNK  关联
+
+2.在Java包下新建书写本地方法的Java类，本案例以Hello.java为例，并书写要使用的本地方法callFromC()如下所示：
+
+  package com.example.sun.sdkdemo;
+
+  /**
+   * Created by su on 2018/1/24.
+   */
+
+  public class Hello {
+      public static native String callFromC();
+  }
+
+  3.在生成头文件之前编译一下我们的module，进行Build->make Module 'app'操作
+
+  4.在Android studio的termianl窗口下，输入cd app/src/main/java/，然后按回车，再次输入：javah -d ../jni 包名.类名，按回车，这样也可以生成头文件，前提是将你电脑上sdk的platform-tools的路径配置到环境变量中。
+
+  5.第四步：在jni目录下创建hello.c文件，实现头文件中的方法；
+  #include "com_xhs_ndkdemo_Hello.h"
+
+  JNIEXPORT jstring JNICALL Java_com_example_sun_sdkdemo_Hello_callFromC
+    (JNIEnv * env, jclass jclas){
+           return (*env)->NewStringUTF(env,"from c");
+    }
+
+  6.在jni目录下创建Android.mk文件，内容如下:
+  LOCAL_PATH := $(call my-dir)
+
+  include $(CLEAR_VARS)
+
+  LOCAL_MODULE    := hello
+  LOCAL_SRC_FILES := hello.c
+
+  # for logging
+  LOCAL_LDLIBS    += -llog
+
+  include $(BUILD_SHARED_LIBRARY)
+
+  Android.mk文件中的LOCAL_MODULE :=hello指定的是生成动态库的名字，LOCAL_SRC_FILES :=hello.c关联的是jni目录下的.c文件。
+
+  7.编译配置，在module/build.gradle中添加如下内容
+
+
+    externalNativeBuild{
+        ndkBuild{
+            path "src/main/jni/Android.mk"
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    注意:若不配置
+                 ndk{
+                 abiFilters "x86"
+                 }
+                 会成所有CPU架构so库
+
+
+    8.点击配置文件上面出现的sync
+
+
+    9.在Hello.java中加载动态库如下：
+
+    /**
+     * Created by su on 2018/1/24.
+     */
+
+    public class Hello {
+        static {
+            System.loadLibrary("hello");
+        }
+        public static native String callFromC();
+    }
+
+
+    10.在MainActivity中的Button点击事件中调用本地方法
+
+     mButton.setText(Hello.callFromC());
+
+
+  11.在D:\downloads\NDKDemo\app\build\intermediates\ndkBuild\debug\obj\local  路径下可查看生成的so库   so库在其他工程使用时需要生成相同的路径
